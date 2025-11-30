@@ -3,7 +3,6 @@
 # - Responsive layout using pack(fill/expand) only
 # - Font scaling on resize
 # - Rounded-look buttons (Canvas-based) that behave like Buttons
-# - Keeps all original logic intact (hotkey recording, click loop, cps monitor, etc.)
 
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
@@ -578,5 +577,6 @@ if __name__ == "__main__":
     app = McAllenClicker(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
+
 
 
