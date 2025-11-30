@@ -1,4 +1,4 @@
-# modern_responsive_fastclicker.py
+# Developed by McAllen
 # Modernized Responsive FastClicker — preserves ALL original functions and behavior
 # - Soft UI theme
 # - Responsive layout using pack(fill/expand) only
@@ -579,3 +579,4 @@ if __name__ == "__main__":
     app = McAllenClicker(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
+
