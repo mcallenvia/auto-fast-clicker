@@ -1,4 +1,3 @@
-FastClicker – Yenilenmiş Sürüm
 
 FastClicker, klasik sürümün yapısını koruyarak tamamen yenilenmiş, modern bir görünüme kavuşturulmuş ve çok daha kullanışlı hâle getirilmiş bir versiyondur. Arayüz baştan sona düzenlendi, koyu tema benimsendi ve uygulama artık tamamen responsive yapıda çalışıyor. Pencere boyutu değiştikçe metinlerin, butonların ve genel görünümün otomatik olarak ölçeklenmesi sayesinde her çözünürlükte tutarlı bir deneyim sunuyor.
 
@@ -9,3 +8,5 @@ Hotkey sistemi keyboard modülünü temel alıyor. Eğer bu modül kullanıcı c
 Açılış sırasında nadiren 2–3 saniyelik kısa bir bekleme yaşanabilir; bu tamamen normal bir yükleme sürecidir ve kısa sürede tamamlanır.
 
 Bu sürüm, FastClicker’ın çalışma mantığını değiştirmeden onu daha modern, daha okunabilir ve çok daha esnek bir hale getirmek amacıyla geliştirilmiştir.
+
+Uygulamayı indirmek için sağ tarafta bulunan **Releases** bölümün tıklayabilirsiniz.
