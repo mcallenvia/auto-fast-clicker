@@ -1,4 +1,4 @@
-FastClicker – Yenilenmiş ve Modernleştirilmiş Sürüm
+FastClicker – Yenilenmiş Sürüm
 
 FastClicker, klasik sürümün yapısını koruyarak tamamen yenilenmiş, modern bir görünüme kavuşturulmuş ve çok daha kullanışlı hâle getirilmiş bir versiyondur. Arayüz baştan sona düzenlendi, koyu tema benimsendi ve uygulama artık tamamen responsive yapıda çalışıyor. Pencere boyutu değiştikçe metinlerin, butonların ve genel görünümün otomatik olarak ölçeklenmesi sayesinde her çözünürlükte tutarlı bir deneyim sunuyor.
 
