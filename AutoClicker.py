@@ -78,7 +78,7 @@ STRINGS = {
         "dashboard":        "Kontrol Paneli",
         "dash_sub":         "Her iki makronun canlı özeti",
         "left_macro":       "SOL TIK MAKROSU",
-        "right_macro":      "SAĞ TIK MAKROSU",
+        "right_macro":      "SAG TIK MAKROSU",
         "status_ready":     "FastClicker v1.2  ·  Hazır  ·  Fare düğmeleri engellendi",
         "idle":             "BEKLİYOR",
         "active":           "● AKTİF",
@@ -1027,3 +1027,4 @@ if __name__ == "__main__":
     app  = McAllenClicker(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
+
