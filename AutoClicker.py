@@ -1,582 +1,1029 @@
-# Developed by McAllen
-# - Soft UI theme
-# - Responsive layout using pack(fill/expand) only
-# - Font scaling on resize
-# - Rounded-look buttons (Canvas-based) that behave like Buttons
+# ============================================================
+#  FastClicker v1.2  —  Developed by McAllen
+#  3-Tab UI: Home | Left Macro | Right Macro
+#  Independent engines, separate keyboard hooks, no conflicts
+#  + Passive Mode  |  TR/EN bilingual
+# ============================================================
 
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import threading
 import time
-import math
+import random
 
-# optional libs
 try:
     import pyautogui
     pyautogui.PAUSE = 0
     pyautogui.FAILSAFE = False
+    _HAS_PYAUTOGUI = True
 except Exception:
     pyautogui = None
+    _HAS_PYAUTOGUI = False
 
 try:
     import keyboard
+    _HAS_KEYBOARD = True
 except Exception:
     keyboard = None
+    _HAS_KEYBOARD = False
 
-# ----------------------------
-# Helper: Rounded-like Button (Canvas) — visually modern but API like Button
-# ----------------------------
+# ── Palette ───────────────────────────────────────────────
+BG      = "#0d0f12"
+PANEL   = "#13161b"
+CARD    = "#1a1e25"
+BORDER  = "#252a33"
+ACC_L   = "#4a9eff"
+ACC_L_H = "#6eb3ff"
+ACC_R   = "#ff7043"
+ACC_R_H = "#ff9068"
+STOP_L  = "#f44336"
+STOP_R  = "#ff9800"
+MUTED   = "#5a6478"
+FG      = "#dde3ee"
+FG_DIM  = "#8a96a8"
+GREEN   = "#22dd77"
+BTN_N   = "#1e2430"
+BTN_N_H = "#2a3345"
+TAB_SEL = "#1a1e25"
+TAB_NOR = "#0d0f12"
+PASSIVE_BG  = "#1a1210"
+PASSIVE_ACT = "#ff9800"
+PASSIVE_OFF = "#22c55e"
+
+# ── Language ──────────────────────────────────────────────
+_LANG = "TR"
+
+STRINGS = {
+    "TR": {
+        "passive_label":    "PASİF MOD",
+        "passive_active":   "AKTİF  ●",
+        "passive_inactive": "DEAKTİF  ○",
+        "passive_btn_on":   "Deaktif Et",
+        "passive_btn_off":  "Aktif Et",
+        "passive_desc":     "Bu mod açıkken makronuz tamamen devre dışıdır.\n"
+                            "Hotkey tuşuna bassanız bile hiçbir tıklama gerçekleşmez.",
+        "set_hotkey":       "Kısayol Ata",
+        "press_key":        "Tuşa bas…",
+        "start":            "BAŞLAT",
+        "stop":             "DURDUR",
+        "reset":            "Sıfırla",
+        "warn_stop":        "Önce makroyu durdurun!",
+        "warn_hotkey":      "Lütfen önce bir kısayol atayın.",
+        "ask_exit":         "Bir makro aktif. Yine de çıkılsın mı?",
+        "exit_title":       "Çıkış",
+        "developed":        "McAllen tarafından geliştirildi",
+        "tab_home":         "Ana Sayfa",
+        "tab_left":         "Sol Tık",
+        "tab_right":        "Sağ Tık",
+        "dashboard":        "Kontrol Paneli",
+        "dash_sub":         "Her iki makronun canlı özeti",
+        "left_macro":       "SOL TIK MAKROSU",
+        "right_macro":      "SAĞ TIK MAKROSU",
+        "status_ready":     "FastClicker v1.2  ·  Hazır  ·  Fare düğmeleri engellendi",
+        "idle":             "BEKLİYOR",
+        "active":           "● AKTİF",
+        "no_hotkey":        "Atanmadı",
+        "not_set":          "ATANMADI",
+    },
+    "EN": {
+        "passive_label":    "PASSIVE MODE",
+        "passive_active":   "ACTIVE  ●",
+        "passive_inactive": "INACTIVE  ○",
+        "passive_btn_on":   "Deactivate",
+        "passive_btn_off":  "Activate",
+        "passive_desc":     "When this mode is ON, your macro is completely disabled.\n"
+                            "Even if you press the hotkey, no clicks will be performed.",
+        "set_hotkey":       "Set Hotkey",
+        "press_key":        "Press a key…",
+        "start":            "START",
+        "stop":             "STOP",
+        "reset":            "Reset",
+        "warn_stop":        "Stop the macro first!",
+        "warn_hotkey":      "Please set a hotkey first.",
+        "ask_exit":         "A macro is active. Exit anyway?",
+        "exit_title":       "Exit",
+        "developed":        "Developed by McAllen",
+        "tab_home":         "Home",
+        "tab_left":         "Left Click",
+        "tab_right":        "Right Click",
+        "dashboard":        "Dashboard",
+        "dash_sub":         "Live overview of both macros",
+        "left_macro":       "LEFT CLICK MACRO",
+        "right_macro":      "RIGHT CLICK MACRO",
+        "status_ready":     "FastClicker v1.2  ·  Ready  ·  Mouse buttons blocked",
+        "idle":             "IDLE",
+        "active":           "● ACTIVE",
+        "no_hotkey":        "Not assigned",
+        "not_set":          "NOT SET",
+    },
+}
+
+def S(key):
+    return STRINGS[_LANG].get(key, key)
+
+
+# ============================================================
+#  FancyButton
+# ============================================================
 class FancyButton(tk.Canvas):
-    def __init__(self, master, text="", command=None, height=34, radius=14,
-                 bg="#4a90ff", fg="#ffffff", hover="#5ea0ff", font=None, padx=16, **kwargs):
-        super().__init__(master, height=height, highlightthickness=0, bd=0, bg=master.cget("bg"))
-        self._text = text
-        self._cmd = command
-        self._bg = bg
-        self._fg = fg
-        self._hover = hover
-        self._radius = radius
-        self._height = height
-        self._font = font or ("Segoe UI", 10, "bold")
-        self._padx = padx
-        self._is_hover = False
+    def __init__(self, master, text="", command=None,
+                 h=34, r=10, bg=BTN_N, fg=FG, hov=BTN_N_H, font=None, **kw):
+        super().__init__(master, height=h, highlightthickness=0, bd=0,
+                         bg=master.cget("bg"))
+        self._t = text; self._cmd = command
+        self._bg = bg; self._fg = fg; self._hov = hov
+        self._r = r; self._h = h
+        self._font = font or ("Segoe UI", 9, "bold")
+        self._over = False
         self.bind("<Configure>", lambda e: self._draw())
-        self.bind("<Enter>", self._on_enter)
-        self.bind("<Leave>", self._on_leave)
-        self.bind("<Button-1>", lambda e: self._on_click())
-        self._draw()
+        self.bind("<Enter>",     lambda e: self._enter())
+        self.bind("<Leave>",     lambda e: self._leave())
+        self.bind("<Button-1>",  lambda e: self._click())
 
-    def _on_enter(self, e):
-        self._is_hover = True
-        self._draw()
+    def _enter(self): self._over = True;  self._draw()
+    def _leave(self): self._over = False; self._draw()
 
-    def _on_leave(self, e):
-        self._is_hover = False
-        self._draw()
-
-    def _on_click(self):
+    def _click(self):
         if callable(self._cmd):
-            try:
-                self._cmd()
-            except Exception as e:
-                print("Button command error:", e)
+            try: self._cmd()
+            except Exception as ex: print("btn err:", ex)
 
-    def configure_colors(self, bg=None, fg=None, hover=None):
-        if bg: self._bg = bg
-        if fg: self._fg = fg
-        if hover: self._hover = hover
-        self._draw()
-
-    def configure_text(self, text):
-        self._text = text
+    def set_text(self, t): self._t = t; self._draw()
+    def set_colors(self, bg=None, fg=None, hov=None):
+        if bg  is not None: self._bg  = bg
+        if fg  is not None: self._fg  = fg
+        if hov is not None: self._hov = hov
         self._draw()
 
     def _draw(self):
         self.delete("all")
         w = self.winfo_width() or 120
-        h = self._height
-        r = min(self._radius, h//2)
-        bg = self._hover if self._is_hover else self._bg
-        # draw rounded rectangle as polygon with smoothing
-        pts = [
-            2+r, 2,
-            w-r-2, 2,
-            w-2, 2,
-            w-2, 2+r,
-            w-2, h-r-2,
-            w-2, h-2,
-            w-r-2, h-2,
-            2+r, h-2,
-            2, h-2,
-            2, h-r-2,
-            2, 2+r,
-            2, 2
-        ]
-        try:
-            self.create_polygon(pts, smooth=True, fill=bg, outline="")
-        except Exception:
-            # fallback rectangle
-            self.create_rectangle(2,2,w-2,h-2, fill=bg, outline="")
-        self.create_text(w/2, h/2, text=self._text, font=self._font, fill=self._fg)
+        h = self._h; r = min(self._r, h // 2)
+        c = self._hov if self._over else self._bg
+        pts = [2+r,2, w-r-2,2, w-2,2, w-2,2+r,
+               w-2,h-r-2, w-2,h-2, w-r-2,h-2,
+               2+r,h-2, 2,h-2, 2,h-r-2, 2,2+r, 2,2]
+        try:    self.create_polygon(pts, smooth=True, fill=c, outline="")
+        except: self.create_rectangle(2,2,w-2,h-2, fill=c, outline="")
+        self.create_text(w/2, h/2, text=self._t, font=self._font, fill=self._fg)
 
-# ----------------------------
-# Main App — all original logic preserved and relocated into class
-# ----------------------------
+
+# ============================================================
+#  MacroEngine  — fully independent per side
+# ============================================================
+class MacroEngine:
+    def __init__(self, side="left"):
+        self.side           = side
+        self.is_clicking    = False
+        self.passive_mode   = False      # NEW: when True, all clicks are blocked
+        self.cps            = 10.0
+        self.click_type     = "single"
+        self.mode           = "toggle"
+        self.hotkey_name    = "NOT SET"
+        self.hotkey_raw     = None
+        self.jitter         = False
+        self.jitter_r       = 3
+        self.burst          = False
+        self.burst_n        = 5
+        self.burst_pause    = 1.0
+        self.sched_delay    = 0
+        self.sched_dur      = 0
+        self.cpu_opt        = True
+        self.session_clicks = 0
+        self.total_clicks   = 0
+        self.last_sec       = []
+        self.actual_cps     = 0.0
+        self.start_time     = None
+        self._last_toggle   = 0.0
+        self._debounce      = 0.35
+        self._stop          = threading.Event()
+        self._hook          = None
+        self.on_state       = None
+        self.on_stats       = None
+        self.on_burst       = None
+
+    def toggle(self):
+        if self.passive_mode: return          # passive mode blocks everything
+        now = time.time()
+        if now - self._last_toggle < self._debounce: return
+        self._last_toggle = now
+        if self.is_clicking: self.stop()
+        else:                self.start()
+
+    def start(self):
+        if self.passive_mode: return
+        if self.is_clicking or self.hotkey_name == "NOT SET": return
+        self.is_clicking = True
+        self._stop.clear()
+        self.session_clicks = 0
+        self.last_sec = []
+        self.start_time = time.time()
+        threading.Thread(target=self._run, daemon=True).start()
+        threading.Thread(target=self._mon, daemon=True).start()
+        if self.on_state: self.on_state()
+
+    def stop(self):
+        if not self.is_clicking: return
+        self.is_clicking = False
+        self._stop.set()
+        if self.on_state: self.on_state()
+
+    def reset(self):
+        self.session_clicks = 0
+        self.total_clicks   = 0
+        self.last_sec       = []
+        self.actual_cps     = 0.0
+        self.start_time     = None
+
+    def elapsed(self):
+        if not self.start_time: return "00:00"
+        e = int(time.time() - self.start_time) if self.is_clicking else 0
+        return f"{e//60:02d}:{e%60:02d}"
+
+    def register_hotkey(self, callback):
+        self.unhook()
+        if not _HAS_KEYBOARD or not self.hotkey_raw: return
+        try:
+            self._hook = keyboard.on_press_key(
+                self.hotkey_raw, callback, suppress=False)
+        except Exception as ex:
+            print(f"[{self.side}] hook err:", ex)
+
+    def unhook(self):
+        if self._hook is not None:
+            try: keyboard.unhook(self._hook)
+            except: pass
+            self._hook = None
+
+    def _run(self):
+        if self.sched_delay > 0:
+            t0 = time.perf_counter()
+            while time.perf_counter() - t0 < self.sched_delay:
+                if not self.is_clicking: return
+                time.sleep(0.05)
+        if self.sched_dur > 0:
+            threading.Thread(target=self._watchdog, daemon=True).start()
+        if self.burst: self._burst_loop()
+        else:          self._cont_loop()
+
+    def _watchdog(self):
+        t0 = time.perf_counter()
+        while self.is_clicking:
+            if time.perf_counter() - t0 >= self.sched_dur:
+                self.stop(); return
+            time.sleep(0.05)
+
+    def _cont_loop(self):
+        ivl = max(0.002, 1.0 / max(0.1, self.cps))
+        while self.is_clicking and not self._stop.is_set():
+            try:
+                if self.passive_mode: self.stop(); return
+                if self.mode == "hold" and _HAS_KEYBOARD and self.hotkey_raw:
+                    if not keyboard.is_pressed(self.hotkey_raw):
+                        time.sleep(0.002); continue
+                t0 = time.perf_counter()
+                self._do_click()
+                spent = time.perf_counter() - t0
+                wait = max(0.0, ivl - spent)
+                if self.cpu_opt:
+                    if wait > 0.003: time.sleep(wait - 0.002)
+                    while time.perf_counter() - t0 < ivl: pass
+                else:
+                    time.sleep(wait)
+            except Exception as ex:
+                print(ex); time.sleep(0.01)
+
+    def _burst_loop(self):
+        ivl   = max(0.002, 1.0 / max(0.1, self.cps))
+        n     = max(1, self.burst_n)
+        pause = max(0.05, self.burst_pause)
+        while self.is_clicking and not self._stop.is_set():
+            for i in range(n):
+                if not self.is_clicking: return
+                if self.passive_mode: self.stop(); return
+                t0 = time.perf_counter()
+                self._do_click()
+                if self.on_burst: self.on_burst(i+1, n)
+                spent = time.perf_counter() - t0
+                wait = max(0.0, ivl - spent)
+                if self.cpu_opt:
+                    if wait > 0.003: time.sleep(wait - 0.002)
+                    while time.perf_counter() - t0 < ivl: pass
+                else:
+                    time.sleep(wait)
+            if not self.is_clicking: break
+            tp = time.perf_counter()
+            while time.perf_counter() - tp < pause:
+                if not self.is_clicking: return
+                time.sleep(0.02)
+
+    def _do_click(self):
+        if self.passive_mode: return
+        n = 2 if self.click_type == "double" else 1
+        if _HAS_PYAUTOGUI:
+            try:
+                dx = dy = 0
+                if self.jitter:
+                    dx = random.randint(-self.jitter_r, self.jitter_r)
+                    dy = random.randint(-self.jitter_r, self.jitter_r)
+                    pyautogui.moveRel(dx, dy, duration=0)
+                pyautogui.mouseDown(button=self.side)
+                pyautogui.mouseUp(button=self.side)
+                if n == 2:
+                    pyautogui.mouseDown(button=self.side)
+                    pyautogui.mouseUp(button=self.side)
+                if self.jitter:
+                    pyautogui.moveRel(-dx, -dy, duration=0)
+            except Exception:
+                self.stop(); return
+        self.session_clicks += n
+        self.total_clicks   += n
+        self.last_sec.append(time.time())
+        if self.on_stats: self.on_stats()
+
+    def _mon(self):
+        while self.is_clicking:
+            now = time.time()
+            self.last_sec = [t for t in self.last_sec if now - t <= 1.0]
+            self.actual_cps = float(len(self.last_sec))
+            if self.on_stats: self.on_stats()
+            time.sleep(0.1)
+
+
+# ============================================================
+#  PassiveModeWidget  — reusable passive mode panel
+# ============================================================
+class PassiveModeWidget(tk.Frame):
+    """
+    Shows a passive mode toggle at the top of each MacroPage.
+    When passive = True → engine.passive_mode = True, macro blocked.
+    """
+    def __init__(self, master, engine: MacroEngine, acc_color: str, **kw):
+        super().__init__(master, bg=PASSIVE_BG, **kw)
+        self._engine = engine
+        self._acc    = acc_color
+        self._passive = False   # local state mirror
+
+        self._build()
+
+    def _build(self):
+        # outer border frame for a subtle card feel
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+
+        inner = tk.Frame(self, bg=PASSIVE_BG)
+        inner.pack(fill="x", padx=14, pady=(8, 6))
+
+        # Left: label + status badge
+        left = tk.Frame(inner, bg=PASSIVE_BG)
+        left.pack(side="left", fill="y")
+
+        lbl_row = tk.Frame(left, bg=PASSIVE_BG)
+        lbl_row.pack(anchor="w")
+        tk.Label(lbl_row, text=S("passive_label"),
+                 font=("Segoe UI", 8, "bold"), bg=PASSIVE_BG, fg=FG_DIM).pack(side="left")
+
+        self._badge = tk.Label(lbl_row, text=f"  {S('passive_inactive')}  ",
+                                font=("Segoe UI", 8, "bold"),
+                                bg=PASSIVE_OFF, fg="#fff", padx=4, pady=1)
+        self._badge.pack(side="left", padx=(10, 0))
+
+        self._desc = tk.Label(left, text=S("passive_desc"),
+                               font=("Segoe UI", 7), bg=PASSIVE_BG,
+                               fg=MUTED, justify="left", anchor="w")
+        self._desc.pack(anchor="w", pady=(4, 0))
+
+        # Right: toggle button
+        self._btn = FancyButton(inner, text=S("passive_btn_off"),
+                                 command=self._toggle,
+                                 h=32, r=8,
+                                 bg=BTN_N, fg=FG_DIM, hov=BTN_N_H,
+                                 font=("Segoe UI", 8, "bold"))
+        self._btn.pack(side="right", padx=(10, 0))
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+
+    def _toggle(self):
+        self._passive = not self._passive
+        self._engine.passive_mode = self._passive
+        if self._passive and self._engine.is_clicking:
+            self._engine.stop()
+        self._refresh()
+
+    def _refresh(self):
+        if self._passive:
+            self._badge.config(text=f"  {S('passive_active')}  ",
+                                bg=PASSIVE_ACT, fg="#fff")
+            self._btn.set_text(S("passive_btn_on"))
+            self._btn.set_colors(bg="#7a2a10", fg="#ffb74d", hov="#8a3a20")
+        else:
+            self._badge.config(text=f"  {S('passive_inactive')}  ",
+                                bg=PASSIVE_OFF, fg="#fff")
+            self._btn.set_text(S("passive_btn_off"))
+            self._btn.set_colors(bg=BTN_N, fg=FG_DIM, hov=BTN_N_H)
+
+    def refresh_lang(self):
+        self._desc.config(text=S("passive_desc"))
+        self._refresh()
+
+
+# ============================================================
+#  MacroPage  — full settings page for one macro
+# ============================================================
+class MacroPage(tk.Frame):
+    def __init__(self, master, engine: MacroEngine, status_cb=None, **kw):
+        super().__init__(master, bg=PANEL, **kw)
+        self.engine     = engine
+        self._status_cb = status_cb
+        self._recording = False
+        self._acc       = ACC_L if engine.side == "left" else ACC_R
+        self._acc_h     = ACC_L_H if engine.side == "left" else ACC_R_H
+        self._stop_col  = STOP_L if engine.side == "left" else STOP_R
+
+        self._cps_v   = tk.DoubleVar(value=10.0)
+        self._mode_v  = tk.StringVar(value="toggle")
+        self._type_v  = tk.StringVar(value="single")
+        self._jit_v   = tk.BooleanVar(value=False)
+        self._jitr_v  = tk.IntVar(value=3)
+        self._bur_v   = tk.BooleanVar(value=False)
+        self._burn_v  = tk.IntVar(value=5)
+        self._burp_v  = tk.DoubleVar(value=1.0)
+        self._del_v   = tk.IntVar(value=0)
+        self._dur_v   = tk.IntVar(value=0)
+
+        self.engine.on_state = lambda: self.after(0, self._sync_state)
+        self.engine.on_stats = lambda: self.after(0, self._sync_stats)
+        self.engine.on_burst = lambda i,n: self.after(0, lambda: self._sync_burst(i,n))
+
+        self._build()
+
+    def _build(self):
+        acc       = self._acc
+        side_name = S("left_macro") if self.engine.side == "left" else S("right_macro")
+
+        # ── Top accent bar ──
+        tk.Frame(self, bg=acc, height=3).pack(fill="x")
+
+        # ── Passive Mode Widget ──
+        self._passive_widget = PassiveModeWidget(self, self.engine, acc)
+        self._passive_widget.pack(fill="x")
+
+        # ── Title row ──
+        title_row = tk.Frame(self, bg=PANEL)
+        title_row.pack(fill="x", padx=14, pady=(10, 6))
+        tk.Label(title_row, text="⬤", font=("Segoe UI", 8),
+                 bg=PANEL, fg=acc).pack(side="left")
+        tk.Label(title_row, text=f"  {side_name}",
+                 font=("Segoe UI", 12, "bold"), bg=PANEL, fg=FG).pack(side="left")
+        self._hk_badge = tk.Label(title_row,
+                                   text=f" {S('not_set')} ",
+                                   font=("Segoe UI", 9, "bold"),
+                                   bg=MUTED, fg="#fff", padx=8, pady=2)
+        self._hk_badge.pack(side="right")
+
+        # ── Big CPS card ──
+        cps_card = tk.Frame(self, bg=CARD)
+        cps_card.pack(fill="x", padx=10, pady=(0, 8))
+        self._cps_live = tk.Label(cps_card, text="0.0",
+                                   font=("Segoe UI", 44, "bold"),
+                                   bg=CARD, fg=acc)
+        self._cps_live.pack(side="left", padx=16, pady=10)
+        rc = tk.Frame(cps_card, bg=CARD)
+        rc.pack(side="right", padx=16, pady=10, anchor="e")
+        tk.Label(rc, text="real-time CPS", font=("Segoe UI", 8),
+                 bg=CARD, fg=FG_DIM).pack(anchor="e")
+        self._burst_lbl = tk.Label(rc, text="", font=("Segoe UI", 8),
+                                    bg=CARD, fg=acc)
+        self._burst_lbl.pack(anchor="e", pady=(2, 0))
+
+        # ── Target CPS ──
+        cps_row = tk.Frame(self, bg=PANEL)
+        cps_row.pack(fill="x", padx=10, pady=(0, 6))
+        tk.Label(cps_row, text="TARGET CPS", font=("Segoe UI", 7, "bold"),
+                 bg=PANEL, fg=MUTED).pack(anchor="w")
+        sl_row = tk.Frame(cps_row, bg=PANEL)
+        sl_row.pack(fill="x")
+        self._cps_val = tk.Label(sl_row, text="10.0",
+                                  font=("Segoe UI", 13, "bold"),
+                                  bg=PANEL, fg=FG, width=5)
+        self._cps_val.pack(side="left")
+        sf = tk.Frame(sl_row, bg=PANEL)
+        sf.pack(side="left", fill="x", expand=True, padx=(4, 0))
+        self._slider = ttk.Scale(sf, from_=1, to=100,
+                                  variable=self._cps_v, orient="horizontal",
+                                  command=self._on_cps)
+        self._slider.pack(fill="x")
+
+        # Presets
+        pf = tk.Frame(self, bg=PANEL)
+        pf.pack(fill="x", padx=10, pady=(0, 8))
+        for v in [10, 20, 50, 100]:
+            FancyButton(pf, text=str(v), command=lambda n=v: self._preset(n),
+                        h=24, r=8, bg=CARD, fg=FG_DIM, hov=BTN_N_H,
+                        font=("Segoe UI", 8, "bold")).pack(side="left", padx=(0, 4))
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=10, pady=(0, 8))
+
+        # ── Mode + Type ──
+        opt_row = tk.Frame(self, bg=PANEL)
+        opt_row.pack(fill="x", padx=10, pady=(0, 8))
+        for label, var, opts in [
+            ("MODE",       self._mode_v, [("Toggle","toggle"),("Hold","hold")]),
+            ("CLICK TYPE", self._type_v, [("Single","single"),("Double","double")]),
+        ]:
+            f = tk.Frame(opt_row, bg=PANEL)
+            f.pack(side="left", expand=True, anchor="w")
+            tk.Label(f, text=label, font=("Segoe UI", 7, "bold"),
+                     bg=PANEL, fg=MUTED).pack(anchor="w")
+            for txt, val in opts:
+                tk.Radiobutton(f, text=txt, variable=var, value=val,
+                               font=("Segoe UI", 9), bg=PANEL, fg=FG,
+                               selectcolor=acc, activebackground=PANEL,
+                               highlightthickness=0, bd=0).pack(anchor="w")
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=10, pady=(0, 8))
+
+        # ── Advanced ──
+        adv = tk.Frame(self, bg=PANEL)
+        adv.pack(fill="x", padx=10, pady=(0, 6))
+        tk.Label(adv, text="ADVANCED", font=("Segoe UI", 7, "bold"),
+                 bg=PANEL, fg=MUTED).pack(anchor="w", pady=(0, 4))
+
+        jr = tk.Frame(adv, bg=PANEL)
+        jr.pack(fill="x", pady=(0, 3))
+        tk.Checkbutton(jr, text="Jitter", variable=self._jit_v,
+                       command=self._push, font=("Segoe UI", 9),
+                       bg=PANEL, fg=FG, selectcolor=acc,
+                       activebackground=PANEL, highlightthickness=0).pack(side="left")
+        tk.Label(jr, text="  radius:", font=("Segoe UI", 8),
+                 bg=PANEL, fg=FG_DIM).pack(side="left")
+        tk.Spinbox(jr, from_=1, to=20, textvariable=self._jitr_v,
+                   width=3, font=("Segoe UI", 8), bg=CARD, fg=FG,
+                   insertbackground=FG, buttonbackground=CARD, relief="flat",
+                   command=self._push).pack(side="left", padx=(3, 2))
+        tk.Label(jr, text="px", font=("Segoe UI", 8), bg=PANEL, fg=FG_DIM).pack(side="left")
+
+        br = tk.Frame(adv, bg=PANEL)
+        br.pack(fill="x", pady=(0, 3))
+        tk.Checkbutton(br, text="Burst", variable=self._bur_v,
+                       command=self._push, font=("Segoe UI", 9),
+                       bg=PANEL, fg=FG, selectcolor=acc,
+                       activebackground=PANEL, highlightthickness=0).pack(side="left")
+        tk.Label(br, text="  N:", font=("Segoe UI", 8),
+                 bg=PANEL, fg=FG_DIM).pack(side="left")
+        tk.Spinbox(br, from_=2, to=50, textvariable=self._burn_v,
+                   width=3, font=("Segoe UI", 8), bg=CARD, fg=FG,
+                   insertbackground=FG, buttonbackground=CARD, relief="flat",
+                   command=self._push).pack(side="left", padx=(3, 0))
+        tk.Label(br, text="  pause:", font=("Segoe UI", 8),
+                 bg=PANEL, fg=FG_DIM).pack(side="left")
+        tk.Spinbox(br, from_=0.1, to=60, increment=0.1, textvariable=self._burp_v,
+                   width=4, font=("Segoe UI", 8), bg=CARD, fg=FG,
+                   insertbackground=FG, buttonbackground=CARD, relief="flat",
+                   command=self._push).pack(side="left", padx=(3, 2))
+        tk.Label(br, text="s", font=("Segoe UI", 8), bg=PANEL, fg=FG_DIM).pack(side="left")
+
+        sr = tk.Frame(adv, bg=PANEL)
+        sr.pack(fill="x")
+        tk.Label(sr, text="Start delay:", font=("Segoe UI", 8),
+                 bg=PANEL, fg=FG_DIM).pack(side="left")
+        tk.Spinbox(sr, from_=0, to=300, textvariable=self._del_v,
+                   width=3, font=("Segoe UI", 8), bg=CARD, fg=FG,
+                   insertbackground=FG, buttonbackground=CARD, relief="flat",
+                   command=self._push).pack(side="left", padx=(3, 0))
+        tk.Label(sr, text="s   Stop after:", font=("Segoe UI", 8),
+                 bg=PANEL, fg=FG_DIM).pack(side="left")
+        tk.Spinbox(sr, from_=0, to=7200, textvariable=self._dur_v,
+                   width=4, font=("Segoe UI", 8), bg=CARD, fg=FG,
+                   insertbackground=FG, buttonbackground=CARD, relief="flat",
+                   command=self._push).pack(side="left", padx=(3, 2))
+        tk.Label(sr, text="s  (0=∞)", font=("Segoe UI", 8),
+                 bg=PANEL, fg=FG_DIM).pack(side="left")
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=10, pady=(8, 8))
+
+        # ── Stats ──
+        stat_row = tk.Frame(self, bg=PANEL)
+        stat_row.pack(fill="x", padx=10, pady=(0, 8))
+        for attr, lbl, init in [("_sess_lbl","Session","0"),
+                                  ("_total_lbl","Total","0"),
+                                  ("_time_lbl","Time","00:00")]:
+            box = tk.Frame(stat_row, bg=CARD)
+            box.pack(side="left", expand=True, fill="both", padx=(0, 4))
+            tk.Label(box, text=lbl, font=("Segoe UI", 7, "bold"),
+                     bg=CARD, fg=MUTED).pack(pady=(5, 1))
+            l = tk.Label(box, text=init, font=("Segoe UI", 13, "bold"),
+                         bg=CARD, fg=FG)
+            l.pack(pady=(0, 5))
+            setattr(self, attr, l)
+
+        # ── Action buttons ──
+        btn_row = tk.Frame(self, bg=PANEL)
+        btn_row.pack(fill="x", padx=10, pady=(0, 12))
+
+        self._start_btn = FancyButton(btn_row, text=S("start"),
+                                       command=self._toggle,
+                                       h=40, r=10, bg=acc, fg="#fff", hov=self._acc_h,
+                                       font=("Segoe UI", 11, "bold"))
+        self._start_btn.pack(side="left", fill="x", expand=True, padx=(0, 5))
+
+        self._hk_btn = FancyButton(btn_row, text=S("set_hotkey"),
+                                    command=self._record_hk,
+                                    h=40, r=10, bg=BTN_N, fg=FG_DIM, hov=BTN_N_H,
+                                    font=("Segoe UI", 9, "bold"))
+        self._hk_btn.pack(side="left", fill="x", expand=True, padx=(0, 5))
+
+        self._reset_btn = FancyButton(btn_row, text="↺",
+                                       command=self._reset,
+                                       h=40, r=10, bg=BTN_N, fg=MUTED, hov=BTN_N_H,
+                                       font=("Segoe UI", 13))
+        self._reset_btn.pack(side="left", ipadx=6)
+
+        self._update_start_style()
+
+    # ── Hotkey ────────────────────────────────────────────
+    def _record_hk(self):
+        if self.engine.is_clicking:
+            messagebox.showwarning("", S("warn_stop")); return
+        self._recording = True
+        self._hk_btn.set_text(S("press_key"))
+        self._set_status(S("press_key"))
+        self.engine.unhook()
+
+        if not _HAS_KEYBOARD:
+            k = simpledialog.askstring("Hotkey", S("set_hotkey"))
+            if k: self._finalize_hk(k)
+            self._recording = False
+            self._hk_btn.set_text(S("set_hotkey")); return
+
+        def _press(ev):
+            if not self._recording: return
+            name = getattr(ev, "name", None)
+            if not name or "mouse" in name.lower(): return
+            self._recording = False
+            try:
+                if hasattr(self, "_tmp_hook") and self._tmp_hook:
+                    keyboard.unhook(self._tmp_hook)
+                    self._tmp_hook = None
+            except: pass
+            self._finalize_hk(name)
+
+        self._tmp_hook = keyboard.on_press(_press)
+
+    def _finalize_hk(self, name):
+        up = name.upper()
+        self.engine.hotkey_name = up
+        self.engine.hotkey_raw  = name.lower()
+        self._hk_badge.config(text=f"  {up}  ", bg=self._acc, fg="#fff")
+        self._hk_btn.set_text(S("set_hotkey"))
+        self.engine.register_hotkey(self._kb_fire)
+        self._update_start_style()
+        self._set_status(f"[{self.engine.side.upper()}] → {up}")
+
+    def _kb_fire(self, ev):
+        if "mouse" in getattr(ev, "name", "").lower(): return
+        self._push()
+        self.engine.toggle()
+
+    # ── Engine ────────────────────────────────────────────
+    def _push(self):
+        e = self.engine
+        e.cps         = max(0.1, self._cps_v.get())
+        e.mode        = self._mode_v.get()
+        e.click_type  = self._type_v.get()
+        e.jitter      = self._jit_v.get()
+        e.jitter_r    = max(1, self._jitr_v.get())
+        e.burst       = self._bur_v.get()
+        e.burst_n     = max(1, self._burn_v.get())
+        e.burst_pause = max(0.05, self._burp_v.get())
+        e.sched_delay = max(0, self._del_v.get())
+        e.sched_dur   = max(0, self._dur_v.get())
+
+    def _toggle(self):
+        if self.engine.passive_mode: return
+        if self.engine.hotkey_name == "NOT SET":
+            messagebox.showinfo("", S("warn_hotkey")); return
+        self._push()
+        self.engine.toggle()
+
+    def _reset(self):
+        if self.engine.is_clicking:
+            messagebox.showwarning("", S("warn_stop")); return
+        self.engine.reset()
+        self._sess_lbl.config(text="0")
+        self._total_lbl.config(text="0")
+        self._time_lbl.config(text="00:00")
+        self._cps_live.config(text="0.0")
+        self._burst_lbl.config(text="")
+
+    def _on_cps(self, val):
+        try:
+            self._cps_val.config(text=f"{float(val):.1f}")
+            self.engine.cps = float(val)
+        except: pass
+
+    def _preset(self, val):
+        self._cps_v.set(val); self._on_cps(val)
+
+    # ── UI sync ───────────────────────────────────────────
+    def _sync_state(self):
+        if self.engine.is_clicking:
+            self._start_btn.set_text("■ " + S("stop"))
+            self._start_btn.set_colors(bg=self._stop_col, hov="#ff6767", fg="#fff")
+            self.engine.register_hotkey(self._kb_fire)
+        else:
+            self._start_btn.set_text(S("start"))
+            self._start_btn.set_colors(bg=self._acc, hov=self._acc_h, fg="#fff")
+            self._cps_live.config(text="0.0")
+            self._burst_lbl.config(text="")
+            self.engine.register_hotkey(self._kb_fire)
+        self._update_start_style()
+
+    def _sync_stats(self):
+        try:
+            self._sess_lbl.config(text=str(self.engine.session_clicks))
+            self._total_lbl.config(text=str(self.engine.total_clicks))
+            self._time_lbl.config(text=self.engine.elapsed())
+            self._cps_live.config(text=f"{self.engine.actual_cps:.1f}")
+        except: pass
+
+    def _sync_burst(self, i, n):
+        try:
+            bar = "█"*i + "░"*(n-i)
+            self._burst_lbl.config(text=f"[{bar}] {i}/{n}")
+        except: pass
+
+    def _update_start_style(self):
+        if self.engine.hotkey_name == "NOT SET":
+            self._start_btn.set_colors(bg=BTN_N, fg=MUTED, hov=BTN_N_H)
+        elif not self.engine.is_clicking:
+            self._start_btn.set_colors(bg=self._acc, hov=self._acc_h, fg="#fff")
+
+    def _set_status(self, msg):
+        if self._status_cb: self._status_cb(msg)
+
+    def stop_if_active(self):
+        if self.engine.is_clicking: self.engine.stop()
+
+    def refresh_lang(self):
+        self._passive_widget.refresh_lang()
+        self._hk_btn.set_text(S("set_hotkey"))
+        if not self.engine.is_clicking:
+            self._start_btn.set_text(S("start"))
+
+
+# ============================================================
+#  HomePage
+# ============================================================
+class HomePage(tk.Frame):
+    def __init__(self, master, eng_l: MacroEngine, eng_r: MacroEngine, **kw):
+        super().__init__(master, bg=PANEL, **kw)
+        self._el = eng_l
+        self._er = eng_r
+        self._build()
+        self._tick()
+
+    def _build(self):
+        tk.Frame(self, bg=ACC_L, height=3).pack(fill="x")
+
+        tk.Label(self, text=S("dashboard"), font=("Segoe UI", 13, "bold"),
+                 bg=PANEL, fg=FG).pack(anchor="w", padx=16, pady=(12, 2))
+        tk.Label(self, text=S("dash_sub"), font=("Segoe UI", 9),
+                 bg=PANEL, fg=MUTED).pack(anchor="w", padx=16, pady=(0, 14))
+
+        cards = tk.Frame(self, bg=PANEL)
+        cards.pack(fill="x", padx=10, pady=(0, 12))
+        self._card_l = self._make_card(cards, S("left_macro"),  ACC_L)
+        self._card_l.pack(side="left", expand=True, fill="both", padx=(0, 6))
+        self._card_r = self._make_card(cards, S("right_macro"), ACC_R)
+        self._card_r.pack(side="left", expand=True, fill="both")
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=10, pady=(4, 14))
+
+        info = tk.Frame(self, bg=PANEL)
+        info.pack(fill="x", padx=14)
+        rows = [
+            ("Left hotkey",       lambda: self._el.hotkey_name),
+            ("Right hotkey",      lambda: self._er.hotkey_name),
+            ("Left total clicks", lambda: str(self._el.total_clicks)),
+            ("Right total clicks",lambda: str(self._er.total_clicks)),
+            ("Left target CPS",   lambda: f"{self._el.cps:.1f}"),
+            ("Right target CPS",  lambda: f"{self._er.cps:.1f}"),
+            ("Left passive mode", lambda: (S("passive_active") if self._el.passive_mode else S("passive_inactive"))),
+            ("Right passive mode",lambda: (S("passive_active") if self._er.passive_mode else S("passive_inactive"))),
+        ]
+        self._info_vals = []
+        for i, (label, fn) in enumerate(rows):
+            row_f = tk.Frame(info, bg=CARD if i%2==0 else PANEL)
+            row_f.pack(fill="x", pady=1)
+            tk.Label(row_f, text=label, font=("Segoe UI", 9),
+                     bg=row_f.cget("bg"), fg=FG_DIM, width=22, anchor="w").pack(side="left", padx=10, pady=5)
+            val_lbl = tk.Label(row_f, text="—", font=("Segoe UI", 9, "bold"),
+                               bg=row_f.cget("bg"), fg=FG, anchor="w")
+            val_lbl.pack(side="left", padx=6)
+            self._info_vals.append((val_lbl, fn))
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=10, pady=(14, 10))
+
+        leg = tk.Frame(self, bg=PANEL)
+        leg.pack(fill="x", padx=14, pady=(0, 10))
+        tk.Label(leg, text="FEATURES", font=("Segoe UI", 7, "bold"),
+                 bg=PANEL, fg=MUTED).pack(anchor="w", pady=(0, 4))
+        features = [
+            ("", "Humanized Jitter",  "Random micro mouse offsets per click"),
+            ("", "CPU Optimization",  "perf_counter adaptive sleep"),
+            ("", "Click Burst Mode",  "N clicks then pause, repeating"),
+            ("", "Macro Scheduling",  "Start delay + auto-stop"),
+            ("", "Passive Mode",      "Instantly disable a macro without unhooking"),
+            ("", "Mouse Safety",      "Mouse buttons cannot trigger macros"),
+            ("", "Debounce 350ms",    "Prevents accidental double-fire"),
+        ]
+        for icon, name, desc in features:
+            rf = tk.Frame(leg, bg=PANEL)
+            rf.pack(fill="x", pady=1)
+            tk.Label(rf, text=f"{icon} {name}", font=("Segoe UI", 8, "bold"),
+                     bg=PANEL, fg=FG, width=22, anchor="w").pack(side="left")
+            tk.Label(rf, text=desc, font=("Segoe UI", 8),
+                     bg=PANEL, fg=FG_DIM, anchor="w").pack(side="left")
+
+    def _make_card(self, parent, title, acc):
+        f = tk.Frame(parent, bg=CARD)
+        tk.Frame(f, bg=acc, height=2).pack(fill="x")
+        tk.Label(f, text=title, font=("Segoe UI", 8, "bold"),
+                 bg=CARD, fg=acc).pack(pady=(8, 2))
+        cps_lbl = tk.Label(f, text="0.0", font=("Segoe UI", 32, "bold"),
+                            bg=CARD, fg=acc)
+        cps_lbl.pack()
+        tk.Label(f, text="CPS", font=("Segoe UI", 7), bg=CARD, fg=MUTED).pack()
+        status_lbl = tk.Label(f, text=S("idle"), font=("Segoe UI", 9, "bold"),
+                               bg=CARD, fg=MUTED, pady=6)
+        status_lbl.pack()
+        hk_lbl = tk.Label(f, text=S("no_hotkey"), font=("Segoe UI", 8),
+                           bg=CARD, fg=FG_DIM)
+        hk_lbl.pack(pady=(0, 10))
+        f._cps = cps_lbl; f._status = status_lbl; f._hk = hk_lbl; f._acc = acc
+        return f
+
+    def _tick(self):
+        try: self._update()
+        except: pass
+        self.after(180, self._tick)
+
+    def _update(self):
+        for card, eng in [(self._card_l, self._el), (self._card_r, self._er)]:
+            card._cps.config(text=f"{eng.actual_cps:.1f}" if eng.is_clicking else "0.0")
+            if eng.passive_mode:
+                card._status.config(text=S("passive_active"), fg=PASSIVE_ACT)
+            elif eng.is_clicking:
+                card._status.config(text=S("active"), fg=card._acc)
+            else:
+                card._status.config(text=S("idle"), fg=MUTED)
+            card._hk.config(text=eng.hotkey_name if eng.hotkey_name != "NOT SET" else S("no_hotkey"))
+        for lbl, fn in self._info_vals:
+            lbl.config(text=fn())
+
+
+# ============================================================
+#  TabBar
+# ============================================================
+class TabBar(tk.Frame):
+    def __init__(self, master, tabs, on_select, **kw):
+        super().__init__(master, bg=BG, **kw)
+        self._on_select = on_select
+        self._btns      = []
+        self._selected  = 0
+        for i, (icon, label) in enumerate(tabs):
+            self._add(i, icon, label)
+        self._select(0, notify=False)
+
+    def _add(self, idx, icon, label):
+        f = tk.Frame(self, bg=BG, cursor="hand2")
+        f.pack(side="left")
+        inner = tk.Frame(f, bg=TAB_NOR)
+        inner.pack(fill="both", expand=True, padx=(0, 1))
+        lbl = tk.Label(inner, text=f"{icon}  {label}",
+                       font=("Segoe UI", 10, "bold"),
+                       bg=TAB_NOR, fg=MUTED, padx=20, pady=12, cursor="hand2")
+        lbl.pack()
+        bar = tk.Frame(inner, bg=TAB_NOR, height=3)
+        bar.pack(fill="x")
+        for w in (f, inner, lbl):
+            w.bind("<Button-1>", lambda e, i=idx: self._select(i))
+            w.bind("<Enter>",    lambda e, l=lbl: l.config(fg=FG))
+            w.bind("<Leave>",    lambda e, l=lbl, i=idx: l.config(
+                fg=FG if i == self._selected else MUTED))
+        self._btns.append((inner, lbl, bar))
+
+    def _select(self, idx, notify=True):
+        self._selected = idx
+        for i, (inner, lbl, bar) in enumerate(self._btns):
+            sel = (i == idx)
+            bg_use = TAB_SEL if sel else TAB_NOR
+            inner.config(bg=bg_use); lbl.config(bg=bg_use, fg=FG if sel else MUTED)
+            bar.config(bg=(ACC_L if idx <= 1 else ACC_R) if sel else TAB_NOR)
+        if notify and self._on_select:
+            self._on_select(idx)
+
+
+# ============================================================
+#  Main Window
+# ============================================================
 class McAllenClicker:
     def __init__(self, root):
         self.root = root
-        self.root.title("FastClicker")
-        self.root.geometry("960x540")
-        self.root.minsize(720, 420)
-        self.root.configure(bg='#0f1113')
+        self.root.title("FastClicker v1.2")
+        # Larger default window — not too big, just comfortable
+        self.root.geometry("680x820")
+        self.root.minsize(600, 700)
+        self.root.configure(bg=BG)
 
-        # Variables (preserve original names / behavior)
-        self.is_clicking = False
-        self.cps = tk.DoubleVar(value=10.0)
-        self.total_clicks = 0
-        self.session_clicks = 0
-        self.click_mode = tk.StringVar(value="toggle")
-        self.hotkey = tk.StringVar(value="NOT SET")
-        self.current_hotkey = None
-        self.button_type = tk.StringVar(value="left")
-        self.click_type = tk.StringVar(value="single")
-        self.start_time = None
-        self.actual_cps = 0
-        self.last_second_clicks = []
-        self.is_recording_hotkey = False
+        self.eng_l = MacroEngine("left")
+        self.eng_r = MacroEngine("right")
+        self._lang_tr = True
 
-        # fonts base (will scale)
-        self.base_font_large = ("Segoe UI", 28, "bold")
-        self.base_font_med = ("Segoe UI", 12)
-        self.base_font_small = ("Segoe UI", 9)
+        self._build()
 
-        # Build responsive UI (pack + expand only)
-        self._build_ui()
+    def _build(self):
+        # ── Header ──
+        hdr = tk.Frame(self.root, bg="#0b0d10", height=58)
+        hdr.pack(fill="x"); hdr.pack_propagate(False)
 
-        # Bind resize for font scaling
-        self.root.bind("<Configure>", self._on_root_resize_throttled())
+        lf = tk.Frame(hdr, bg="#0b0d10")
+        lf.pack(side="left", padx=18, pady=8)
+        tk.Label(lf, text="FastClicker", font=("Segoe UI", 17, "bold"),
+                 fg=FG, bg="#0b0d10").pack(anchor="w")
+        self._sub_lbl = tk.Label(lf, text=S("developed"),
+                                  font=("Segoe UI", 8), fg=MUTED, bg="#0b0d10")
+        self._sub_lbl.pack(anchor="w")
 
-    # ------------- UI BUILD -------------
-    def _build_ui(self):
-        # Header (top)
-        self.header = tk.Frame(self.root, bg="#0b0d0e")
-        self.header.pack(side="top", fill="x")
-        self.header.pack_propagate(False)
-        self.header.configure(height=64)
+        rf = tk.Frame(hdr, bg="#0b0d10")
+        rf.pack(side="right", padx=16, pady=10)
 
-        title_frame = tk.Frame(self.header, bg="#0b0d0e")
-        title_frame.pack(side="left", padx=18, pady=10)
-        self.title_label = tk.Label(title_frame, text="FastClicker", font=("Segoe UI", 16, "bold"),
-                                    fg="#f4f7fb", bg="#0b0d0e")
-        self.title_label.pack(anchor="w")
-        self.subtitle_label = tk.Label(title_frame, text="Developed by McAllen",
-                                       font=("Segoe UI", 9), fg="#9aa6b2", bg="#0b0d0e")
-        self.subtitle_label.pack(anchor="w")
+        self._lang_btn = FancyButton(rf, text="🌐 EN", command=self._toggle_lang,
+                                      h=26, r=7, bg=BTN_N, fg=FG_DIM, hov=BTN_N_H,
+                                      font=("Segoe UI", 8, "bold"))
+        self._lang_btn.pack(side="right", padx=(8, 0))
 
-        # Main content container
-        self.main = tk.Frame(self.root, bg="#0f1113")
-        self.main.pack(fill="both", expand=True, padx=12, pady=12)
+        tk.Label(rf, text="v1.2", font=("Segoe UI", 13, "bold"),
+                 fg=GREEN, bg="#0b0d10").pack(side="right")
 
-        # Use three columns via frames — pack with expand to get responsive columns
-        self.left = tk.Frame(self.main, bg="#121417")
-        self.left.pack(side="left", fill="both", expand=True, padx=(0,8))
-        self.center = tk.Frame(self.main, bg="#13161a")
-        self.center.pack(side="left", fill="both", expand=True, padx=(0,8))
-        self.right = tk.Frame(self.main, bg="#121417")
-        self.right.pack(side="left", fill="both", expand=True)
+        # ── Tab bar ──
+        self._tabbar = TabBar(
+            self.root,
+            tabs=[("⌂", S("tab_home")), ("◀", S("tab_left")), ("▶", S("tab_right"))],
+            on_select=self._switch_tab,
+        )
+        self._tabbar.pack(fill="x")
+        tk.Frame(self.root, bg=BORDER, height=1).pack(fill="x")
 
-        # Left content (Hotkey, Mode, Button)
-        self._build_left(self.left)
-        # Center content (CPS slider and presets)
-        self._build_center(self.center)
-        # Right content (stats + actions)
-        self._build_right(self.right)
+        # ── Pages ──
+        self._container = tk.Frame(self.root, bg=PANEL)
+        self._container.pack(fill="both", expand=True)
 
-        # Status bar bottom
-        self.status = tk.Label(self.root, text="Developed by McAllen ~ 2025", anchor="w",
-                               font=self.base_font_small, bg="#0b0d0e", fg="#94a3b8")
-        self.status.pack(side="bottom", fill="x")
+        self._page_home  = HomePage(self._container, self.eng_l, self.eng_r)
+        self._page_left  = MacroPage(self._container, self.eng_l, self._set_status)
+        self._page_right = MacroPage(self._container, self.eng_r, self._set_status)
 
-    def _build_left(self, parent):
-        pad = 12
-        container = tk.Frame(parent, bg=parent.cget("bg"))
-        container.pack(fill="both", expand=True, padx=12, pady=12)
+        self._pages  = [self._page_home, self._page_left, self._page_right]
+        self._current = 0
+        self._page_home.pack(fill="both", expand=True)
 
-        tk.Label(container, text="Hotkey", font=self.base_font_med, bg=container.cget("bg"), fg="#9aa6b2").pack(anchor="w")
-        self.hotkey_label = tk.Label(container, textvariable=self.hotkey, font=("Segoe UI", 14, "bold"),
-                                     bg="#0f1113", fg="#4a9eff", width=12, height=2, relief="flat")
-        self.hotkey_label.pack(pady=(8,10))
+        # ── Status bar ──
+        self._status_lbl = tk.Label(
+            self.root, text=S("status_ready"),
+            anchor="w", font=("Segoe UI", 8),
+            bg="#0b0d10", fg=MUTED)
+        self._status_lbl.pack(side="bottom", fill="x", padx=10, pady=2)
 
-        self.hotkey_btn = FancyButton(container, text="Set Hotkey", command=self.start_recording_hotkey,
-                                      bg="#2a2f36", hover="#3a4f77", fg="#fff", font=("Segoe UI",10,"bold"))
-        self.hotkey_btn.pack(pady=(0,14), fill="x")
+    def _toggle_lang(self):
+        global _LANG
+        self._lang_tr = not self._lang_tr
+        _LANG = "TR" if self._lang_tr else "EN"
+        self._lang_btn.set_text("🌐 EN" if self._lang_tr else "🌐 TR")
+        self._sub_lbl.config(text=S("developed"))
+        self._status_lbl.config(text=S("status_ready"))
+        for p in (self._page_left, self._page_right):
+            p.refresh_lang()
 
-        # Mode
-        tk.Label(container, text="Mode", font=self.base_font_med, bg=container.cget("bg"), fg="#9aa6b2").pack(anchor="w", pady=(6,2))
-        mode_frame = tk.Frame(container, bg=container.cget("bg"))
-        mode_frame.pack(anchor="w", pady=(0,12))
-        for text, val in [("Toggle", "toggle"), ("Hold", "hold")]:
-            rb = tk.Radiobutton(mode_frame, text=text, variable=self.click_mode, value=val,
-                                font=self.base_font_small, bg=container.cget("bg"),
-                                fg="#d1d5db", selectcolor=container.cget("bg"), activebackground=container.cget("bg"),
-                                anchor="w", highlightthickness=0, bd=0)
-            rb.pack(anchor="w", pady=2)
+    def _switch_tab(self, idx):
+        self._pages[self._current].pack_forget()
+        self._current = idx
+        self._pages[idx].pack(fill="both", expand=True)
 
-        # Button selection
-        tk.Label(container, text="Button", font=self.base_font_med, bg=container.cget("bg"), fg="#9aa6b2").pack(anchor="w", pady=(6,2))
-        btn_frame = tk.Frame(container, bg=container.cget("bg"))
-        btn_frame.pack(anchor="w")
-        for text, val in [("Left", "left"), ("Right", "right"), ("Middle", "middle")]:
-            rb = tk.Radiobutton(btn_frame, text=text, variable=self.button_type, value=val,
-                                font=self.base_font_small, bg=container.cget("bg"),
-                                fg="#d1d5db", selectcolor=container.cget("bg"), activebackground=container.cget("bg"))
-            rb.pack(anchor="w")
-
-    def _build_center(self, parent):
-        container = tk.Frame(parent, bg=parent.cget("bg"))
-        container.pack(fill="both", expand=True, padx=12, pady=12)
-
-        tk.Label(container, text="Target CPS", font=self.base_font_med, bg=container.cget("bg"), fg="#9aa6b2").pack()
-        self.cps_display = tk.Label(container, text=f"{self.cps.get():.1f}", font=self.base_font_large,
-                                    bg=container.cget("bg"), fg="#4a9eff")
-        self.cps_display.pack(pady=(6,12))
-
-        slider_frame = tk.Frame(container, bg=container.cget("bg"))
-        slider_frame.pack(fill="x", padx=8)
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure("TScale", background=container.cget("bg"))
-        self.cps_slider = ttk.Scale(slider_frame, from_=1, to=100, variable=self.cps,
-                                    orient='horizontal', command=self.update_cps_display)
-        self.cps_slider.pack(fill="x")
-
-        # presets
-        presets = tk.Frame(container, bg=container.cget("bg"))
-        presets.pack(pady=(12,10))
-        for i, cps in enumerate([10, 20, 50, 100]):
-            b = FancyButton(presets, text=str(cps), command=lambda c=cps: self.set_cps_preset(c),
-                            bg="#2b2f34", hover="#3a4f77", fg="#fff", font=("Segoe UI",10,"bold"))
-            b.pack(side="left", padx=6, pady=4, ipadx=6)
-
-        tk.Label(container, text="Click Type", font=self.base_font_med, bg=container.cget("bg"), fg="#9aa6b2").pack(pady=(12,6))
-        type_frame = tk.Frame(container, bg=container.cget("bg"))
-        type_frame.pack()
-        for text, val in [("Single", "single"), ("Double", "double")]:
-            rb = tk.Radiobutton(type_frame, text=text, variable=self.click_type, value=val,
-                                font=self.base_font_small, bg=container.cget("bg"),
-                                fg="#d1d5db", selectcolor=container.cget("bg"), activebackground=container.cget("bg"))
-            rb.pack(anchor="w")
-
-    def _build_right(self, parent):
-        container = tk.Frame(parent, bg=parent.cget("bg"))
-        container.pack(fill="both", expand=True, padx=12, pady=12)
-
-        tk.Label(container, text="Real-time CPS", font=self.base_font_med, bg=container.cget("bg"), fg="#9aa6b2").pack()
-        self.actual_cps_label = tk.Label(container, text="0.0", font=("Segoe UI", 36, "bold"),
-                                         bg=container.cget("bg"), fg="#4a9eff")
-        self.actual_cps_label.pack(pady=(6,18))
-
-        stats_container = tk.Frame(container, bg=container.cget("bg"))
-        stats_container.pack(pady=(0,12), fill="x")
-
-        # Three stat boxes stacked horizontally but responsive
-        stat1 = tk.Frame(stats_container, bg="#0f1113")
-        stat1.pack(side="left", expand=True, fill="both", padx=6)
-        tk.Label(stat1, text="Total", font=self.base_font_small, bg=stat1.cget("bg"), fg="#9aa6b2").pack(pady=(8,4))
-        self.total_label = tk.Label(stat1, text="0", font=("Segoe UI", 18, "bold"), bg=stat1.cget("bg"), fg="#ffffff")
-        self.total_label.pack()
-
-        stat2 = tk.Frame(stats_container, bg="#0f1113")
-        stat2.pack(side="left", expand=True, fill="both", padx=6)
-        tk.Label(stat2, text="Session", font=self.base_font_small, bg=stat2.cget("bg"), fg="#9aa6b2").pack(pady=(8,4))
-        self.session_label = tk.Label(stat2, text="0", font=("Segoe UI", 18, "bold"), bg=stat2.cget("bg"), fg="#ffffff")
-        self.session_label.pack()
-
-        stat3 = tk.Frame(stats_container, bg="#0f1113")
-        stat3.pack(side="left", expand=True, fill="both", padx=6)
-        tk.Label(stat3, text="Time", font=self.base_font_small, bg=stat3.cget("bg"), fg="#9aa6b2").pack(pady=(8,4))
-        self.time_label = tk.Label(stat3, text="00:00", font=("Segoe UI", 18, "bold"), bg=stat3.cget("bg"), fg="#ffffff")
-        self.time_label.pack()
-
-        # Action buttons
-        actions = tk.Frame(container, bg=container.cget("bg"))
-        actions.pack(pady=(18,6))
-        self.start_btn = FancyButton(actions, text="START", command=self.toggle_clicking,
-                                     bg="#4a9eff", hover="#66b0ff", fg="#fff", font=("Segoe UI",11,"bold"))
-        self.start_btn.pack(side="left", padx=8, ipadx=4)
-        self.reset_btn = FancyButton(actions, text="RESET", command=self.reset_stats,
-                                     bg="#2b2f34", hover="#3a4f77", fg="#fff", font=("Segoe UI",11,"bold"))
-        self.reset_btn.pack(side="left", padx=8, ipadx=4)
-
-        # Initially disable start until hotkey set (preserve original behavior)
-        self.start_btn_state_update(disable= (self.hotkey.get() == "NOT SET"))
-
-    # -------------------------
-    # UI utility helpers
-    # -------------------------
-    def start_recording_hotkey(self):
-        if self.is_clicking:
-            messagebox.showwarning("Warning", "Stop clicking first")
-            return
-
-        self.is_recording_hotkey = True
-        self.hotkey_btn.configure_text("Press a key...")
-        self.status.config(text="Waiting for key press...")
-
-        # Unhook previous if any
-        try:
-            if self.current_hotkey:
-                keyboard.unhook_key(self.current_hotkey)
-        except Exception:
-            pass
-
-        # If keyboard not available, fallback to dialog
-        if keyboard is None:
-            k = simpledialog.askstring("Hotkey", "Enter hotkey (e.g. F6, a, ctrl+shift+x):", parent=self.root)
-            if k:
-                self.hotkey.set(k.upper())
-                self.current_hotkey = k.lower()
-                self.start_btn_state_update(disable=False)
-                self.hotkey_btn.configure_text("Set Hotkey")
-                self.hotkey_btn._draw()
-                self.status.config(text=f"Ready - Press {k.upper()} to start")
-            self.is_recording_hotkey = False
-            return
-
-        # watcher callback
-        def _on_press(event):
-            if not self.is_recording_hotkey:
-                return
-            name = getattr(event, "name", None)
-            if not name:
-                return
-            try:
-                keyboard.unhook_all()
-            except Exception:
-                pass
-            self.is_recording_hotkey = False
-            name_upper = name.upper()
-            self.hotkey.set(name_upper)
-            self.current_hotkey = name.lower()
-            # register
-            try:
-                keyboard.on_press_key(self.current_hotkey, lambda e: self.toggle_clicking())
-            except Exception:
-                pass
-            self.start_btn_state_update(disable=False)
-            self.hotkey_btn.configure_text("Set Hotkey")
-            self.status.config(text=f"Ready - Press {name_upper} to start")
-
-        try:
-            keyboard.on_press(_on_press)
-        except Exception:
-            messagebox.showerror("Error", "Unable to record hotkey")
-            self.is_recording_hotkey = False
-            self.hotkey_btn.configure_text("Set Hotkey")
-            self.status.config(text="")
-
-    def start_btn_state_update(self, disable=True):
-        # tweak visual disabled state by changing color
-        if disable:
-            self.start_btn.configure_colors(bg="#5a6570", fg="#e6eef8", hover="#6b7a85")
-        else:
-            self.start_btn.configure_colors(bg="#4a90ff", fg="#ffffff", hover="#66b0ff")
-
-    # This method provides a small wrapper so FancyButton can reconfigure colors
-    def _ensure_fancy_methods(self):
-        # ensure buttons have configure_colors method (they do)
-        for b in (self.start_btn, self.reset_btn, self.hotkey_btn):
-            if not hasattr(b, "configure_colors"):
-                # no-op
-                b.configure_colors = lambda **k: None
-
-    # -------------------------
-    # Functional behavior (unchanged logic, improved safety)
-    # -------------------------
-    def update_cps_display(self, value):
-        try:
-            self.cps_display.config(text=f"{float(value):.1f}")
-        except Exception:
-            pass
-
-    def set_cps_preset(self, value):
-        self.cps.set(value)
-        self.update_cps_display(value)
-
-    def toggle_clicking(self):
-        if self.hotkey.get() == "NOT SET":
-            return
-        if not self.is_clicking:
-            self.start_clicking()
-        else:
-            self.stop_clicking()
-
-    def start_clicking(self):
-        self.is_clicking = True
-        self.start_time = time.time()
-        self.session_clicks = 0
-        self.last_second_clicks = []
-
-        self.start_btn.configure_text("STOP")
-        self.start_btn.configure_colors(bg="#ff534f", hover="#ff6763", fg="#fff")
-        self.hotkey_btn.configure_text("Set Hotkey")
-        # disable hotkey during run visually (no actual disable needed)
-        self.hotkey_btn.configure_colors(bg="#2b2f34", hover="#3a4f77")
-
-        # register hotkey if keyboard available
-        if keyboard:
-            try:
-                keyboard.unhook_all()
-                if self.current_hotkey:
-                    keyboard.on_press_key(self.current_hotkey, lambda e: self.toggle_clicking())
-            except Exception:
-                pass
-
-        # threads as original
-        t1 = threading.Thread(target=self.click_loop, daemon=True)
-        t2 = threading.Thread(target=self.monitor_cps, daemon=True)
-        t3 = threading.Thread(target=self.update_timer, daemon=True)
-        t1.start(); t2.start(); t3.start()
-        self.status.config(text=f"Active - Press {self.hotkey.get()} to stop")
-
-    def stop_clicking(self):
-        self.is_clicking = False
-        self.start_btn.configure_text("START")
-        self.start_btn.configure_colors(bg="#4a90ff", hover="#66b0ff", fg="#fff")
-        # re-enable hotkey visually
-        self.hotkey_btn.configure_colors(bg="#2a2f34", hover="#3a4f77")
-        self.status.config(text=f"Stopped - Press {self.hotkey.get()} to restart")
-
-    def click_loop(self):
-        while self.is_clicking:
-            try:
-                # hold mode check
-                if self.click_mode.get() == "hold" and keyboard:
-                    try:
-                        if not keyboard.is_pressed(self.current_hotkey):
-                            time.sleep(0.001)
-                            continue
-                    except Exception:
-                        pass
-
-                clicks = 2 if self.click_type.get() == "double" else 1
-
-                # perform clicks
-                # Use mouseDown/up similarly to original; keep try/except
-                try:
-                    pyautogui.mouseDown(button=self.button_type.get())
-                    pyautogui.mouseUp(button=self.button_type.get())
-                    if clicks == 2:
-                        pyautogui.mouseDown(button=self.button_type.get())
-                        pyautogui.mouseUp(button=self.button_type.get())
-                except Exception:
-                    # if pyautogui fails for any reason, stop to avoid busy loop
-                    print("pyautogui.click failed; stopping clicking")
-                    self.stop_clicking()
-                    return
-
-                self.total_clicks += clicks
-                self.session_clicks += clicks
-                self.last_second_clicks.append(time.time())
-
-                # update labels occasionally (reduce UI thrash)
-                if self.session_clicks % 10 == 0:
-                    try:
-                        self.total_label.config(text=str(self.total_clicks))
-                        self.session_label.config(text=str(self.session_clicks))
-                    except Exception:
-                        pass
-
-                interval = max(0.002, 1.0 / (max(0.1, float(self.cps.get()))))
-                time.sleep(interval)
-            except Exception as e:
-                print("Click error:", e)
-                time.sleep(0.01)
-
-    def monitor_cps(self):
-        while self.is_clicking:
-            try:
-                now = time.time()
-                self.last_second_clicks = [t for t in self.last_second_clicks if now - t <= 1.0]
-                self.actual_cps = len(self.last_second_clicks)
-                try:
-                    self.actual_cps_label.config(text=f"{self.actual_cps:.1f}")
-                except Exception:
-                    pass
-                time.sleep(0.1)
-            except Exception:
-                time.sleep(0.1)
-
-    def update_timer(self):
-        while self.is_clicking:
-            try:
-                elapsed = int(time.time() - self.start_time)
-                minutes = elapsed // 60
-                seconds = elapsed % 60
-                self.time_label.config(text=f"{minutes:02d}:{seconds:02d}")
-                time.sleep(1)
-            except Exception:
-                time.sleep(1)
-
-    def reset_stats(self):
-        if self.is_clicking:
-            messagebox.showwarning("Warning", "Stop clicking first")
-            return
-        if messagebox.askyesno("Confirm", "Reset all statistics?"):
-            self.total_clicks = 0
-            self.session_clicks = 0
-            self.last_second_clicks = []
-            self.actual_cps = 0
-            try:
-                self.total_label.config(text="0")
-                self.session_label.config(text="0")
-                self.time_label.config(text="00:00")
-                self.actual_cps_label.config(text="0.0")
-            except Exception:
-                pass
-            self.status.config(text="Statistics reset")
+    def _set_status(self, msg):
+        try: self._status_lbl.config(text=msg)
+        except: pass
 
     def on_closing(self):
-        if self.is_clicking:
-            if not messagebox.askyesno("Exit", "Clicking is active. Exit anyway?"):
-                return
-        self.is_clicking = False
-        try:
-            if keyboard:
-                keyboard.unhook_all()
-        except Exception:
-            pass
+        if self.eng_l.is_clicking or self.eng_r.is_clicking:
+            if not messagebox.askyesno(S("exit_title"), S("ask_exit")): return
+        self.eng_l.stop(); self.eng_l.unhook()
+        self.eng_r.stop(); self.eng_r.unhook()
         self.root.destroy()
 
-    # -------------------------
-    # Responsive adjustments: font scaling on resize
-    # -------------------------
-    def _on_root_resize_throttled(self):
-        # Return a throttled callback to avoid over-calling on resize events
-        last = {"t": 0}
-        def cb(event=None):
-            now = time.time()
-            if now - last["t"] < 0.06:
-                return
-            last["t"] = now
-            self._on_root_resize()
-        return cb
 
-    def _on_root_resize(self):
-        try:
-            w = max(720, self.root.winfo_width())
-            # scale factor relative to base 960 width
-            scale = min(1.45, max(0.8, w / 960.0))
-            # adjust fonts
-            big = int(28 * scale)
-            med = int(12 * scale)
-            small = int(9 * scale)
-
-            self.cps_display.config(font=("Segoe UI", max(14,big), "bold"))
-            self.actual_cps_label.config(font=("Segoe UI", max(16,int(36*scale)), "bold"))
-            self.title_label.config(font=("Segoe UI", max(10,int(16*scale)), "bold"))
-            self.subtitle_label.config(font=("Segoe UI", max(8,int(9*scale))))
-            # adjust fancy button heights by reconfiguring Canvas height
-            for btn in (self.start_btn, self.reset_btn, self.hotkey_btn):
-                try:
-                    h = max(28, int(34 * scale))
-                    btn.config(height=h)
-                    btn._height = h
-                    btn._radius = max(10, int(14 * scale))
-                    btn._draw()
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-# ----------------------------
-# Run
-# ----------------------------
+# ── Entry point ───────────────────────────────────────────────
 if __name__ == "__main__":
     root = tk.Tk()
-    app = McAllenClicker(root)
+    app  = McAllenClicker(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
-
-
-
