@@ -1,112 +1,29 @@
-# ⚡ FastClicker
-
-<div align="center">
+# FastClicker
 
 ![Version](https://img.shields.io/badge/version-1.2-22dd77?style=for-the-badge)
 ![Language](https://img.shields.io/badge/python-3.8%2B-4a9eff?style=for-the-badge&logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows-blue?style=for-the-badge&logo=windows&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-orange?style=for-the-badge)
 
-**Gelişmiş, ikili makro sistemi ile donatılmış modern bir auto-clicker uygulaması.**  
-*An advanced auto-clicker with dual independent macro system.*
+FastClicker, sol ve sağ fare tuşu için bağımsız iki makro motoru barındıran, Python ile geliştirilmiş bir auto-clicker uygulamasıdır. Uygulama tkinter tabanlı bir arayüze, pyautogui tıklama motoruna ve keyboard modülü üzerinden çalışan kısayol sistemine sahiptir.
 
-[📥 İndir / Download](#-kurulum--installation) · [🆕 Changelog](#-changelog) · [📖 Kullanım / Usage](#-kullanım--usage)
-
-</div>
+İlk sürümde tek makro ve temel kontroller yer alıyordu. v1.1 ile çift makro altyapısı ve güvenlik katmanları eklendi. v1.2, arayüzü sekme tabanlı bir yapıya taşıdı ve Humanized Jitter, Burst Modu, Macro Scheduling, Pasif Mod ve CPU Optimizasyonu gibi gelişmiş özellikleri sisteme entegre etti.
 
 ---
 
-## 🇹🇷 Türkçe
+## İçindekiler
 
-FastClicker, klasik sürümün yapısını koruyarak tamamen yenilenmiş, modern bir görünüme kavuşturulmuş ve çok daha kullanışlı hâle getirilmiş bir versiyondur. Arayüz baştan sona düzenlendi, koyu tema benimsendi ve uygulama artık tamamen responsive yapıda çalışıyor. Pencere boyutu değiştikçe metinlerin, butonların ve genel görünümün otomatik olarak ölçeklenmesi sayesinde her çözünürlükte tutarlı bir deneyim sunuyor.
-
-Uygulamada düzen; kullanım alışkanlıklarını bozmayacak şekilde, ancak çok daha anlaşılır bir formda yeniden tasarlandı. Artık uygulama **3 sayfalı sekme** yapısıyla çalışıyor:
-
-- **Ana Sayfa:** Her iki makronun canlı CPS değeri, durum (aktif/bekliyor/pasif), atanan kısayollar ve toplam tıklama sayısı tek ekranda izlenebilir.
-- **Sol Tık Makrosu:** Sol fare tuşuna ait tüm ayarlar buradan yönetilir.
-- **Sağ Tık Makrosu:** Sağ fare tuşu için tamamen bağımsız, ayrı bir ayar sayfası.
-
-Hotkey sistemi `keyboard` modülünü temel alıyor. Eğer bu modül kullanıcı cihazında yoksa uygulama otomatik olarak manuel hotkey girişine yönlendiriyor. Tıklama işlemleri `pyautogui` üzerinden gerçekleştiriliyor. Uygulamayı donmadan çalıştırabilmek için tıklama mekanizması, CPS hesaplaması ve zamanlayıcı birbirinden ayrı thread'ler üzerinde yönetiliyor.
-
-> Açılış sırasında nadiren 2–3 saniyelik kısa bir bekleme yaşanabilir; bu tamamen normal bir yükleme sürecidir.
+- [Gereksinimler](#gereksinimler)
+- [Kurulum](#kurulum)
+- [Arayüz](#arayüz)
+- [Kullanım](#kullanım)
+- [Özellikler](#özellikler)
+- [Teknik Altyapı](#teknik-altyapı)
+- [Changelog](#changelog)
 
 ---
 
-## 🇬🇧 English
-
-FastClicker is a fully redesigned, modernized version of the classic auto-clicker. The interface has been rebuilt from scratch with a dark theme, responsive layout, and font scaling across all resolutions. The app now uses a **3-tab structure** for clear navigation between the dashboard and each macro's settings.
-
-Hotkeys are handled via the `keyboard` module with automatic fallback to manual input. Clicking is performed through `pyautogui`. All operations (clicking, CPS monitoring, timer) run on independent daemon threads to keep the UI responsive at all times.
-
-> A brief 2–3 second startup delay is normal and expected.
-
----
-
-## ✨ Özellikler / Features
-
-| Özellik / Feature | Açıklama / Description |
-|---|---|
-| 🖱️ **Dual Macro System** | Sol ve sağ tık için tamamen bağımsız makrolar / Independent left & right click macros |
-| 🔥 **Humanized Jitter** | Her tıklamada rastgele fare kayması / Random micro mouse offsets per click |
-| 🔥 **CPU Optimization** | `perf_counter` tabanlı hassas zamanlama / High-res timer with adaptive sleep |
-| 🔥 **Burst Mode** | N tık → bekle → tekrar / N clicks → pause → repeat |
-| 🔥 **Macro Scheduling** | Gecikmeli başlatma ve otomatik durdurma / Delayed start & auto-stop |
-| 🔴 **Passive Mode** | Hotkey'i bozmadan makroyu anında devre dışı bırakma / Disable macro without unhooking |
-| 🔒 **Mouse Safety** | Fare düğmeleri makro tetikleyemez / Mouse buttons cannot trigger macros |
-| 🔒 **Debounce 350ms** | Çift tetiklenmeyi engeller / Prevents accidental double-fire |
-| 🌐 **TR / EN** | Tam çift dil desteği / Full bilingual support |
-| 📊 **Live Dashboard** | Anlık CPS, oturum ve toplam istatistikleri / Real-time CPS, session & total stats |
-
----
-
-## 🆕 Changelog
-
-### v1.2 — *Güncel / Current*
-
-**Yeni / New:**
-- 🌐 **TR / EN dil desteği** — Başlık barındaki butonla anlık dil değişimi
-- 🔴 **Pasif Mod** — Her makro sayfasının üstünde ayrı pasif mod toggle'ı; aktifken hotkey'e basılsa bile tıklama gerçekleşmez
-- 📊 **Ana Sayfa (Dashboard)** — İki makronun canlı istatistiklerini tek ekranda gösterir; pasif mod durumu da burada yansır
-- 🖱️ **Bağımsız hotkey hook sistemi** — Her motor kendi `keyboard.on_press_key` hook'unu tutar; kısayol atama veya değiştirme diğer makroyu devre dışı bırakmaz
-- 🔥 **Humanized Jitter** — Tıklama başına ayarlanabilir piksel aralığında rastgele fare kayması
-- 🔥 **CPU Optimization** — `time.perf_counter` + adaptive spin-wait ile alt-milisaniye hassasiyeti
-- 🔥 **Burst Mode** — N tık ardından P saniye bekleme döngüsü; aktif burst ilerleme barı
-- 🔥 **Macro Scheduling** — Gecikmeli başlatma (saniye) + süreli otomatik durdurma
-
-**İyileştirmeler / Improvements:**
-- Sekme tabanlı (Tab) arayüz — her şey tek sayfada görünür, scroll gerekmez
-- Her makro sayfasında büyük anlık CPS gösterimi (44pt)
-- Varsayılan kısayol artık `NOT SET` — iki makro başlangıçta birbirini etkilemez
-- Pencere boyutu `680×820`'ye büyütüldü, minimum `600×700`
-- Fare butonu koruması hotkey kayıt ekranında da aktif
-
----
-
-### v1.1
-
-**Yeni / New:**
-- 🖱️ **Dual Macro System** — Sol tık (R tuşu) ve sağ tık (F tuşu) için ayrı, bağımsız makrolar
-- 🔒 **Mouse Safety** — Fare düğmeleri hiçbir şekilde makroyu tetikleyemez
-- 🔒 **Debounce 350ms** — Yanlışlıkla çift tetiklenmeyi önler
-- Sağ üstte yeşil `v1.1` rozeti
-
-**İyileştirmeler / Improvements:**
-- Thread-safe durum güncellemeleri (`after(0, ...)` ile UI'ya güvenli geri dönüş)
-- Kapatma koruması — aktif makro varken çıkışta onay istenir
-
----
-
-### v1.0 — *İlk Sürüm / Initial Release*
-
-- Tek makro (sol tık), hotkey atama, CPS slider (1–100)
-- Toggle / Hold mod, Tek / Çift tıklama
-- Gerçek zamanlı CPS monitörü, oturum sayacı, timer
-- Responsive dark UI, `FancyButton` (Canvas tabanlı yuvarlak butonlar)
-- `pyautogui` + `keyboard` entegrasyonu, her ikisi de opsiyonel
-
----
-
-## 📋 Gereksinimler / Requirements
+## Gereksinimler
 
 ```
 python >= 3.8
@@ -114,63 +31,132 @@ pyautogui
 keyboard
 ```
 
-```bash
+`keyboard` modülü, Windows'ta global kısayol dinleyebilmek için yönetici yetkisi gerektirir. Yetki olmadan çalıştırıldığında uygulama otomatik olarak manuel kısayol girişine geçer; işlevsellik kaybolmaz.
+
+---
+
+## Kurulum
+
+Releases bölümünden `.py` dosyasını indirin.
+
+```
 pip install pyautogui keyboard
+python FastClicker_v1.2.py
 ```
 
-> `keyboard` modülü Windows'ta administrator (yönetici) izni gerektirebilir.
+Açılışta 2–3 saniyelik kısa bir bekleme yaşanabilir. Bu, keyboard ve pyautogui modüllerinin yüklenmesinden kaynaklanır ve normaldir.
 
 ---
 
-## 📥 Kurulum / Installation
+## Arayüz
 
-1. Sağ taraftaki **Releases** bölümünden `.py` dosyasını indirin.
-2. Bağımlılıkları yükleyin:
-   ```bash
-   pip install pyautogui keyboard
-   ```
-3. Çalıştırın:
-   ```bash
-   python FastClicker_v1.2.py
-   ```
+Uygulama üç sekmeden oluşur.
 
----
+**Ana Sayfa**
 
-## 📖 Kullanım / Usage
+Her iki makronun anlık CPS değeri, çalışma durumu, atanmış kısayollar, toplam tıklama ve pasif mod bilgisi tek ekranda görüntülenir. Makro sayfalarına geçmeden önce genel durumu buradan takip edebilirsiniz.
 
-### TR
-1. **Sol Tık** veya **Sağ Tık** sekmesine geçin.
-2. **Kısayol Ata** butonuna tıklayın ve klavyeden bir tuşa basın (fare tuşları kabul edilmez).
-3. **Hedef CPS** slider'ından veya preset butonlarından hız seçin.
-4. **Mod** ve **Tık Türü** ayarlayın.
-5. **BAŞLAT** butonuna tıklayın ya da atadığınız kısayola basın.
-6. Makroyu devre dışı bırakmak için **Pasif Mod**'u aktif edin — kısayol atama bozulmaz.
+**Sol Tık Makrosu**
 
-### EN
-1. Switch to the **Left Click** or **Right Click** tab.
-2. Click **Set Hotkey** and press any keyboard key (mouse buttons are rejected).
-3. Set speed via the **Target CPS** slider or preset chips.
-4. Choose **Mode** (Toggle/Hold) and **Click Type** (Single/Double).
-5. Click **START** or press your assigned hotkey.
-6. Use **Passive Mode** to instantly disable a macro without losing its hotkey assignment.
+Sol fare tuşuna ait tüm ayarlar bu sayfada yönetilir. Kısayol ataması, hız kontrolü, mod seçimi ve gelişmiş özellikler burada yer alır.
+
+**Sağ Tık Makrosu**
+
+Sol tık sayfasıyla birebir aynı yapıda, tamamen bağımsız bir sayfa. İki makronun kısayolları, ayarları ve çalışma durumları birbirini hiçbir şekilde etkilemez.
 
 ---
 
-## 🛡️ Güvenlik Notları / Safety Notes
+## Kullanım
 
-- **Fare düğmeleri** hiçbir zaman makroyu tetikleyemez; bu hardcoded bir korumadır.
-- **350ms debounce** sayesinde kısayola hızlı art arda basılsa bile makro yanlışlıkla açılıp kapanmaz.
-- **Pasif Mod** aktifken motor tamamen kilitlenir — hotkey, START butonu ve loop içi kontrol hepsinde çalışır.
-- Her iki makronun kısayolları tamamen bağımsız hook'larla yönetilir; birini değiştirmek diğerini etkilemez.
-
----
-
-## 👨‍💻 Geliştirici / Developer
-
-**McAllen** — 2025
+1. Sol Tık veya Sağ Tık sekmesine geçin.
+2. "Kısayol Ata" butonuna tıklayın ve klavyeden bir tuşa basın. Fare düğmeleri kısayol olarak kabul edilmez, sistem bu girişi otomatik olarak reddeder.
+3. Hedef CPS değerini slider veya hazır değer butonlarından (5, 10, 20, 50, 100) ayarlayın.
+4. Çalışma modunu seçin: Toggle her basışta makroyu açıp kapatır, Hold ise tuş basılı tutulduğu sürece çalışır.
+5. Tık türünü seçin: Tek veya Çift.
+6. BAŞLAT butonuna ya da atadığınız kısayola basın.
+7. Makroyu geçici devre dışı bırakmak için Pasif Mod'u açın. Kısayol ataması ve tüm ayarlar korunur.
 
 ---
 
-<div align="center">
-<sub>FastClicker v1.2 · Python · tkinter · pyautogui · keyboard</sub>
-</div>
+## Özellikler
+
+### Çift Makro Sistemi
+
+Sol ve sağ tık için bağımsız iki motor çalışır. Her motorun kendi kısayolu, CPS değeri, modu, gelişmiş ayarları ve istatistikleri vardır. Motorlar birbirinden tamamen yalıtılmış keyboard hook'ları kullanır. Bir makronun kısayolunu değiştirmek veya sıfırlamak diğer makroyu etkilemez. İki makro aynı anda eş zamanlı çalışabilir.
+
+### Humanized Jitter
+
+Her tıklama öncesinde fare imleci piksel cinsinden ayarlanmış bir yarıçap içinde rastgele kayar, tıklama gerçekleştikten sonra orijinal konumuna geri döner. Yarıçap 1 ile 30 piksel arasında ayarlanabilir. Tekdüze tıklama koordinatlarından kaçınmak için kullanılır.
+
+### Burst Modu
+
+Makro, belirlenen sayıda tıklamayı hedef CPS'de gerçekleştirir, ardından belirtilen süre kadar bekler ve döngüyü yeniden başlatır. Hem tıklama sayısı hem bekleme süresi bağımsız olarak ayarlanır. Aktif burst sırasında makro sayfasında blok tipi bir ilerleme çubuğu gösterilir.
+
+### Macro Scheduling
+
+Makro, kısayol tuşuna basıldıktan belirli saniye sonra devreye girebilir. Ek olarak, çalışmaya başladıktan belirli saniye sonra otomatik olarak durabilir. Her iki değer de saniye cinsinden girilir; sıfır değeri sınırsız anlamına gelir. İki ayar birlikte kullanılabilir.
+
+### Pasif Mod
+
+Her makro sayfasının üst kısmında yer alır. Pasif Mod açıkken makro tamamen bloklanır; kısayol tuşuna basılsa, START butonuna tıklansa veya Hold modu aktif olsa bile hiçbir tıklama gerçekleşmez. Kapatmak için toggle'a bir kez daha tıklamak yeterlidir. Kısayol ataması ve tüm ayarlar korunur.
+
+### CPU Optimizasyonu
+
+Standart `time.sleep()` yerine `time.perf_counter()` tabanlı adaptif bekleme kullanılır. Belirlenen interval süresi yaklaştığında sistem spin-wait moduna geçer. Bu yöntem, özellikle 50 CPS'in üzerinde belirgin şekilde daha hassas zamanlama sağlar. Yavaş makinelerde adaptif bekleme devre dışı bırakılabilir.
+
+### Fare Düğmesi Koruması
+
+Fare düğmeleri hiçbir koşulda kısayol olarak atanamaz ve makroyu tetikleyemez. Bu kısıtlama hem kısayol kayıt ekranında hem de motor içinde ayrı ayrı uygulanır.
+
+### Debounce (350ms)
+
+Kısayol tuşuna hızlı art arda basıldığında makro istem dışı açılıp kapanmaz. İki toggle işlemi arasında geçmesi gereken minimum süre 350 milisaniyedir.
+
+---
+
+## Teknik Altyapı
+
+Her makro motoru üç bağımsız daemon thread üzerinde çalışır: tıklama döngüsü, CPS monitörü ve zamanlayıcı. Bu yapı sayesinde hiçbir işlem UI thread'ini bloklamaz.
+
+Keyboard hook'ları `keyboard.on_press_key()` ile her motor için ayrı ayrı tutulur. Kısayol değiştirildiğinde yalnızca o motora ait hook `keyboard.unhook()` ile temizlenir. Geçici kayıt hook'u ise atama tamamlanır tamamlanmaz serbest bırakılır.
+
+UI güncellemeleri thread içinden doğrudan değil, `after(0, callback)` aracılığıyla UI thread'ine devredilerek yapılır. Bu, tkinter'ın thread-safe olmayan yapısından kaynaklanan olası çökmeleri önler.
+
+---
+
+## Changelog
+
+### v1.2
+
+- Sekme tabanlı arayüz eklendi. Ana Sayfa, Sol Tık ve Sağ Tık olmak üzere üç bölüm. Tüm içerik tek sayfada görünür, kaydırma gerekmez.
+- Pasif Mod eklendi. Her makro sayfasının üst kısmında bağımsız toggle. Aktifken tüm tetikleyiciler motor düzeyinde engellenir.
+- Ana Sayfa eklendi. Her iki makronun anlık CPS, kısayol, durum ve pasif mod bilgisi tek ekranda izlenebilir.
+- Humanized Jitter eklendi. Piksel cinsinden ayarlanabilir yarıçapla her tıklamada rastgele fare kayması.
+- Burst Modu eklendi. Tıklama sayısı ve bekleme süresi ayarlanabilir döngü; canlı ilerleme çubuğu.
+- Macro Scheduling eklendi. Başlama gecikmesi ve otomatik durdurma süresi saniye cinsinden ayarlanabilir.
+- CPU Optimizasyonu eklendi. perf_counter tabanlı adaptif bekleme; yüksek CPS değerlerinde hassas zamanlama.
+- TR / EN dil desteği eklendi. Başlık çubuğundaki butonla anlık geçiş.
+- Bağımsız keyboard hook sistemi uygulandı. Her motor kendi hook referansını tutar.
+- Varsayılan kısayol NOT SET olarak değiştirildi.
+- Pencere boyutu 680x820 olarak güncellendi.
+
+### v1.1
+
+- Sol ve sağ tık için bağımsız çift makro sistemi eklendi.
+- Fare düğmesi koruması eklendi.
+- 350ms debounce koruması eklendi.
+- Aktif makro varken çıkışta kullanıcıya onay sorulur.
+- Başlık alanına sürüm bilgisi eklendi.
+
+### v1.0
+
+- İlk sürüm.
+- Tek makro, kısayol atama, CPS slider.
+- Toggle ve Hold çalışma modları, tek ve çift tıklama seçeneği.
+- Gerçek zamanlı CPS monitörü, oturum sayacı, zamanlayıcı.
+- Koyu tema arayüz, Canvas tabanlı yuvarlak butonlar.
+- pyautogui ve keyboard entegrasyonu; her ikisi de opsiyonel.
+
+---
+
+*Developed by McAllen — 2026*
